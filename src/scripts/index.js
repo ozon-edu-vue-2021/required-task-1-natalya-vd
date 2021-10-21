@@ -12,12 +12,24 @@ const loader = document.querySelector('.loader');
 
 const MAX_PAGE_IAMGES = 34;
 let loaderTimeout;
+let minHeightContainer = 700; //Для новой сетки
 
 /**
  * Функция задаёт первоначальное состояние страницы.
  * Отправляется первый запрос за картинками, юез параметров т.к. с дефолтными настройками.
  */
 const initialState = function () {
+    
+    //Условие для новой сетки. Не очень хорошее решение...
+    if(window.innerWidth <= 360) {
+        minHeightContainer = 1800;
+    } else if(window.innerWidth <= 768) {
+        minHeightContainer = 1200;
+    } else if(window.innerWidth <= 1024) {
+        minHeightContainer = 800;
+    };
+    //--------//
+
     action.disabled = false;
     getPictures();
 }
@@ -32,7 +44,9 @@ const getPictures = function (page = 1, limit = 10) {
     showLoader();
     fetch(`https://picsum.photos/v2/list?page=${page};limit=${limit}`)
         .then(function (response) {return response.json()})
-        .then(function (result) {renderPictures(result)})
+        .then(function (result) {
+            renderPictures(result)
+        })
 }
 
 /**
@@ -62,7 +76,7 @@ const showLoader = function () {
 const hideLoader = function () {
     loaderTimeout = setTimeout(function () {
         loader.style.visibility = 'hidden';
-        loaderTimeout.clearTimeout();
+        clearTimeout(loaderTimeout);
     }, 700);
 }
 
@@ -91,12 +105,12 @@ const renderPictures = function (list) {
         throw Error(`Pictures not defined. The list length: ${list.length}`);
     }
 
-    const clone = templateImageCard.content.cloneNode(true);
     const fragment = document.createDocumentFragment();
 
     list.forEach(function (element) {
+        const clone = templateImageCard.content.cloneNode(true);
+        
         const link = clone.querySelector('a');
-
         link.href = element.url;
         link.dataset.id = element.id;
 
@@ -104,10 +118,16 @@ const renderPictures = function (list) {
         image.src = cropImage(element.download_url, 5);
         image.alt = element.author;
         image.classList.add('preview');
+        
         fragment.appendChild(clone)
     });
 
-    container.appendChild(fragment);
+    //Для новой сетки
+    const imagesLayot = document.querySelector('.images .break')
+    container.insertBefore(fragment, imagesLayot);
+    //--------//
+
+    //container.appendChild(fragment);
     hideLoader();
 }
 
@@ -142,19 +162,20 @@ const togglePopup = function () {
 }
 
 /**
- * @type {object} MouseEvent
- */
-
-/**
  * Обработчик кнопки подгрузки картинок
  * @param {MouseEvent} evt
  */
 const actionHandler = function (evt) {
     evt.preventDefault();
     const nextPage = evt.currentTarget.dataset.page;
-    evt.currentTarget.dataset.page = nextPage + 1;
+    evt.currentTarget.dataset.page = +nextPage + 1;
+    
+    //Для новой сетки
+    const height = minHeightContainer * +nextPage
+    container.style.height = height + "px";
+    //--------//
 
-    if (nextPage > MAX_PAGE_IAMGES) {
+    if(+nextPage === MAX_PAGE_IAMGES) {
         console.warn(`WARN: You are trying to call a page that exceeds ${MAX_PAGE_IAMGES}`);
         evt.currentTarget.disabled = true;
     } else {
@@ -172,7 +193,7 @@ const imageHandler = function (evt) {
     evt.preventDefault();
 
     if (evt.target.closest('a')) {
-        getPictureInfo(evt.target.dataset.id);
+        getPictureInfo(evt.target.closest('a').dataset.id);
     }
 }
 
